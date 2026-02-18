@@ -10,10 +10,29 @@
 <body>
   <div id="map"></div>
 
+  <!-- Scan line overlay – reads geography like a music box -->
+  <canvas id="scanOverlay"></canvas>
+
+  <!-- Coordinate display -->
+  <div id="coords">
+    <span id="coordLat">30.5728°N</span>
+    <span id="coordLng">104.0668°E</span>
+    <span id="coordZoom">Z13</span>
+  </div>
+
   <div id="panel">
     <div class="header">
       <h1>MAP SCORE</h1>
-      <p class="subtitle">地图乐谱 · 成都 Chengdu</p>
+      <p class="subtitle">地图乐谱 · <span id="cityLabel">成都 Chengdu</span></p>
+    </div>
+
+    <!-- City selector -->
+    <div class="city-selector">
+      <button class="city-btn active" data-city="chengdu">成都</button>
+      <button class="city-btn" data-city="taipei">台北</button>
+      <button class="city-btn" data-city="tokyo">東京</button>
+      <button class="city-btn" data-city="paris">Paris</button>
+      <button class="city-btn" data-city="newyork">NYC</button>
     </div>
 
     <div class="analysis">
@@ -36,7 +55,10 @@
 
     <canvas id="waveform"></canvas>
 
-    <button id="startBtn">START</button>
+    <div class="controls">
+      <button id="startBtn">START</button>
+      <button id="autopanBtn" title="Auto-pan mode">DRIFT</button>
+    </div>
 
     <div class="info">
       <p>滑动地图，通过地理环境演奏音乐。</p>
@@ -47,9 +69,20 @@
     </div>
 
     <div class="legend">
-      <p>公园/山脉 = 柔和音色</p>
-      <p>河流/水域 = 缓慢节奏</p>
-      <p>道路/建筑 = 共鸣杂音</p>
+      <p>公园/山脉 = 柔和音色 · Soft pad</p>
+      <p>河流/水域 = 缓慢节奏 · Slow arp</p>
+      <p>道路/建筑 = 共鸣杂音 · Resonance</p>
+      <p class="shortcut">Space = Play/Stop · D = Drift</p>
+    </div>
+  </div>
+
+  <!-- Intro overlay -->
+  <div id="intro">
+    <div class="intro-content">
+      <h1>MAP SCORE</h1>
+      <p class="intro-zh">地图乐谱</p>
+      <p class="intro-desc">将地理变为声音<br>Turn geography into sound</p>
+      <button id="introBtn">ENTER</button>
     </div>
   </div>
 

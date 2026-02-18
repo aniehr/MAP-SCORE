@@ -8,6 +8,7 @@
  *   Gray  (道路 Roads)   → Noise texture – stronger resonance with more gray
  *
  * A low drone provides a constant tonal foundation.
+ * A sub-bass layer adds depth tied to overall activity.
  *
  * The design mirrors the original MAP SCORE pipeline where colour ratios from
  * TouchDesigner drive parameters in VCV Rack via OSC.
@@ -16,8 +17,6 @@ class AudioEngine {
   constructor() {
     this.isPlaying   = false;
     this.initialized = false;
-
-    // Latest colour values (percentages)
     this.params = { green: 0, blue: 0, gray: 0 };
   }
 
@@ -34,24 +33,47 @@ class AudioEngine {
     this.analyser = new Tone.Analyser('waveform', 128);
     this.master.connect(this.analyser);
 
+    // Compressor for smoother dynamics
+    this.compressor = new Tone.Compressor({
+      threshold: -18,
+      ratio: 4,
+      attack: 0.05,
+      release: 0.25
+    });
+    this.compressor.connect(this.master);
+
     // ── Drone (subtle sine foundation) ─────────────────────────
-    this.droneGain   = new Tone.Gain(0.1).connect(this.master);
+    this.droneGain   = new Tone.Gain(0.1).connect(this.compressor);
     this.droneFilter = new Tone.Filter(350, 'lowpass').connect(this.droneGain);
     this.drone = new Tone.Synth({
       oscillator: { type: 'sine' },
       envelope:   { attack: 4, decay: 0, sustain: 1, release: 4 }
     }).connect(this.droneFilter);
 
+    // ── Sub-bass layer ─────────────────────────────────────────
+    this.subGain = new Tone.Gain(0).connect(this.compressor);
+    this.subSynth = new Tone.Synth({
+      oscillator: { type: 'sine' },
+      envelope: { attack: 2, decay: 0, sustain: 1, release: 3 }
+    }).connect(this.subGain);
+
     // ── GREEN / NATURE – Ambient pad ───────────────────────────
     this.padReverb = new Tone.Reverb(8);
     this.padReverb.wet.value = 0.45;
-    this.padReverb.connect(this.master);
+    this.padReverb.connect(this.compressor);
+
+    this.padChorus = new Tone.Chorus({
+      frequency: 0.3,
+      delayTime: 12,
+      depth: 0.6
+    }).connect(this.padReverb);
+    this.padChorus.start();
 
     this.padFilter = new Tone.Filter({
       frequency: 900,
       type: 'lowpass',
       rolloff: -24
-    }).connect(this.padReverb);
+    }).connect(this.padChorus);
 
     this.padGain = new Tone.Gain(0).connect(this.padFilter);
 
@@ -68,14 +90,16 @@ class AudioEngine {
       ['D3', 'A3', 'D4', 'A4'],
       ['G2', 'D3', 'G3', 'D4'],
       ['E3', 'A3', 'E4', 'A4'],
-      ['C3', 'E3', 'A3', 'E4']
+      ['C3', 'E3', 'A3', 'E4'],
+      ['D3', 'G3', 'D4', 'G4'],
+      ['A2', 'D3', 'G3', 'D4']
     ];
     this.chordIdx = 0;
 
     // ── BLUE / WATER – Flowing arpeggios ───────────────────────
     this.arpReverb = new Tone.Reverb(5);
     this.arpReverb.wet.value = 0.55;
-    this.arpReverb.connect(this.master);
+    this.arpReverb.connect(this.compressor);
 
     this.arpDelay = new Tone.PingPongDelay({
       delayTime: '8n',
@@ -90,13 +114,23 @@ class AudioEngine {
       envelope:   { attack: 0.015, decay: 0.35, sustain: 0.08, release: 1.2 }
     }).connect(this.arpGain);
 
-    // C major pentatonic (宫调式)
-    this.arpNotes = ['C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5', 'E5'];
-    this.arpIdx   = 0;
-    this.arpDir   = 1;
+    // Extended pentatonic scale across two octaves
+    this.arpNotes = [
+      'C4', 'D4', 'E4', 'G4', 'A4',
+      'C5', 'D5', 'E5', 'G5', 'A5'
+    ];
+    this.arpIdx = 0;
+    this.arpDir = 1;
+
+    // Second arp voice for harmony
+    this.arpGain2 = new Tone.Gain(0).connect(this.arpDelay);
+    this.arpSynth2 = new Tone.Synth({
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.02, decay: 0.5, sustain: 0.05, release: 1.5 }
+    }).connect(this.arpGain2);
 
     // ── GRAY / URBAN – Noise + resonance ───────────────────────
-    this.noiseGain = new Tone.Gain(0).connect(this.master);
+    this.noiseGain = new Tone.Gain(0).connect(this.compressor);
     this.noiseFilter = new Tone.Filter({
       frequency: 1000,
       type:      'bandpass',
@@ -106,7 +140,7 @@ class AudioEngine {
     this.noise = new Tone.Noise('pink').connect(this.noiseFilter);
 
     // Metallic resonance hits
-    this.resGain   = new Tone.Gain(0).connect(this.master);
+    this.resGain   = new Tone.Gain(0).connect(this.compressor);
     this.resReverb = new Tone.Reverb(3);
     this.resReverb.wet.value = 0.35;
     this.resReverb.connect(this.resGain);
@@ -120,6 +154,15 @@ class AudioEngine {
       octaves:         1.5,
       volume:          -18
     }).connect(this.resReverb);
+
+    // Percussive click for urban rhythm
+    this.clickGain = new Tone.Gain(0).connect(this.compressor);
+    this.clickSynth = new Tone.MembraneSynth({
+      pitchDecay: 0.01,
+      octaves: 6,
+      envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.1 },
+      volume: -24
+    }).connect(this.clickGain);
 
     // Wait for reverb impulse-response generation
     await Promise.all([
@@ -142,10 +185,13 @@ class AudioEngine {
     // Drone
     this.drone.triggerAttack('C2', Tone.now());
 
+    // Sub-bass
+    this.subSynth.triggerAttack('C1', Tone.now());
+
     // Noise
     this.noise.start();
 
-    // Pad – chord changes every ~8 s, decoupled from Transport BPM
+    // Pad – chord changes every ~8 s
     this._triggerPadChord();
     this.padTimer = setInterval(() => this._triggerPadChord(), 8000);
 
@@ -156,7 +202,14 @@ class AudioEngine {
       const vel  = 0.3 + Math.random() * 0.35;
       this.arpSynth.triggerAttackRelease(note, '16n', time, vel);
 
-      // Bounce with occasional random jump for variety
+      // Second voice plays a fifth above occasionally
+      if (Math.random() < 0.3 && this.arpIdx + 2 < this.arpNotes.length) {
+        this.arpSynth2.triggerAttackRelease(
+          this.arpNotes[this.arpIdx + 2], '16n', time + 0.05, vel * 0.5
+        );
+      }
+
+      // Bounce with occasional random jump
       if (Math.random() < 0.08) {
         this.arpIdx = Math.floor(Math.random() * this.arpNotes.length);
       } else {
@@ -172,6 +225,13 @@ class AudioEngine {
       this.resSynth.triggerAttackRelease('16n', time);
     }, '2n').start(0);
 
+    // Urban clicks
+    this.clickLoop = new Tone.Loop((time) => {
+      if (this.params.gray < 5) return;
+      if (Math.random() < 0.6) return; // sparse
+      this.clickSynth.triggerAttackRelease('C2', '32n', time);
+    }, '4n').start(0);
+
     Tone.Transport.start();
   }
 
@@ -185,19 +245,24 @@ class AudioEngine {
       clearInterval(this.padTimer);
       this.padTimer = null;
     }
-    if (this.arpLoop) { this.arpLoop.stop(); this.arpLoop.dispose(); this.arpLoop = null; }
-    if (this.resLoop) { this.resLoop.stop(); this.resLoop.dispose(); this.resLoop = null; }
+    if (this.arpLoop)   { this.arpLoop.stop();   this.arpLoop.dispose();   this.arpLoop = null; }
+    if (this.resLoop)   { this.resLoop.stop();   this.resLoop.dispose();   this.resLoop = null; }
+    if (this.clickLoop) { this.clickLoop.stop(); this.clickLoop.dispose(); this.clickLoop = null; }
 
     this.drone.triggerRelease();
+    this.subSynth.triggerRelease();
     this.noise.stop();
 
     // Fade out gains
     const fade = 0.6;
     this.padGain.gain.rampTo(0, fade);
     this.arpGain.gain.rampTo(0, fade);
+    this.arpGain2.gain.rampTo(0, fade);
     this.noiseGain.gain.rampTo(0, fade);
     this.resGain.gain.rampTo(0, fade);
+    this.clickGain.gain.rampTo(0, fade);
     this.droneGain.gain.rampTo(0, fade);
+    this.subGain.gain.rampTo(0, fade);
   }
 
   /* ── Real-time parameter update ──────────────────────────────── */
@@ -206,40 +271,38 @@ class AudioEngine {
     if (!this.isPlaying) return;
     this.params = colorData;
 
-    const t = 1.5; // ramp time (seconds) – smooth transitions
+    const t = 1.5; // ramp time (seconds)
 
     // ── Green / Nature ──
-    // Normalise: ~40 % green is "full" presence
     const gn = Math.min(colorData.green / 40, 1);
     this.padGain.gain.rampTo(gn * 0.55, t);
-    // More green → lower cutoff → softer, warmer timbre (音色越柔和)
     this.padFilter.frequency.rampTo(280 + (1 - gn) * 2400, t);
+    // More green → slower chorus → dreamier feel
+    this.padChorus.frequency.rampTo(0.1 + (1 - gn) * 0.8, t);
 
     // ── Blue / Water ──
-    // Normalise: ~25 % blue is "full"
     const bn = Math.min(colorData.blue / 25, 1);
     this.arpGain.gain.rampTo(bn * 0.45, t);
-    // More blue → slower BPM (节奏越慢)
-    const bpm = 160 - bn * 120; // range 160 → 40
+    this.arpGain2.gain.rampTo(bn * 0.2, t);
+    // More blue → slower BPM
+    const bpm = 160 - bn * 120;
     Tone.Transport.bpm.rampTo(bpm, t * 2);
-    // More blue → wetter reverb & delay (more spacious)
     this.arpReverb.wet.rampTo(0.3 + bn * 0.5, t);
     this.arpDelay.wet.rampTo(0.2 + bn * 0.45, t);
 
     // ── Gray / Urban ──
-    // Normalise: ~35 % gray is "full"
     const grn = Math.min(colorData.gray / 35, 1);
     this.noiseGain.gain.rampTo(grn * 0.30, t);
-    // More gray → higher Q → stronger resonance (共鸣声越强)
     this.noiseFilter.Q.rampTo(1 + grn * 18, t);
     this.noiseFilter.frequency.rampTo(350 + grn * 2200, t);
-    // Metal hits volume
     this.resGain.gain.rampTo(grn * 0.25, t);
+    this.clickGain.gain.rampTo(grn * 0.3, t);
 
-    // ── Drone responds to overall activity ──
+    // ── Drone + Sub-bass respond to overall activity ──
     const activity = (gn + bn + grn) / 3;
     this.droneGain.gain.rampTo(0.06 + activity * 0.14, t);
     this.droneFilter.frequency.rampTo(180 + activity * 400, t);
+    this.subGain.gain.rampTo(activity * 0.08, t);
   }
 
   /* ── Waveform data for visualisation ─────────────────────────── */
