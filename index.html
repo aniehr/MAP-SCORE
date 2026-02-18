@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAP SCORE · 地图乐谱 · 成都</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="panel">
+    <div class="header">
+      <h1>MAP SCORE</h1>
+      <p class="subtitle">地图乐谱 · 成都 Chengdu</p>
+    </div>
+
+    <div class="analysis">
+      <div class="bar-group">
+        <span class="bar-label">自然 Nature</span>
+        <div class="bar"><div class="bar-fill green" id="greenBar"></div></div>
+        <span class="bar-value" id="greenValue">0%</span>
+      </div>
+      <div class="bar-group">
+        <span class="bar-label">水域 Water</span>
+        <div class="bar"><div class="bar-fill blue" id="blueBar"></div></div>
+        <span class="bar-value" id="blueValue">0%</span>
+      </div>
+      <div class="bar-group">
+        <span class="bar-label">道路 Roads</span>
+        <div class="bar"><div class="bar-fill gray" id="grayBar"></div></div>
+        <span class="bar-value" id="grayValue">0%</span>
+      </div>
+    </div>
+
+    <canvas id="waveform"></canvas>
+
+    <button id="startBtn">START</button>
+
+    <div class="info">
+      <p>滑动地图，通过地理环境演奏音乐。</p>
+      <p>Slide the map to play music through geography.</p>
+      <p class="credit">Inspired by
+        <a href="https://www.instagram.com/pepepepebrick/" target="_blank" rel="noopener">pepepepebrick</a>
+      </p>
+    </div>
+
+    <div class="legend">
+      <p>公园/山脉 = 柔和音色</p>
+      <p>河流/水域 = 缓慢节奏</p>
+      <p>道路/建筑 = 共鸣杂音</p>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <script src="js/colorAnalyzer.js"></script>
+  <script src="js/audioEngine.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
