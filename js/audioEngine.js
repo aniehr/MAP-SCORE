@@ -33,6 +33,10 @@ class AudioEngine {
     this.analyser = new Tone.Analyser('waveform', 128);
     this.master.connect(this.analyser);
 
+    // FFT analyser for frequency-band data (drives particle visuals)
+    this.fftAnalyser = new Tone.FFT(256);
+    this.master.connect(this.fftAnalyser);
+
     // Compressor for smoother dynamics
     this.compressor = new Tone.Compressor({
       threshold: -18,
@@ -309,6 +313,40 @@ class AudioEngine {
 
   getWaveform() {
     return this.analyser ? this.analyser.getValue() : null;
+  }
+
+  /**
+   * Return frequency-band energy levels for visual reactivity.
+   * @returns {{ level: number, bass: number, mid: number, high: number } | null}
+   */
+  getFFT() {
+    if (!this.fftAnalyser) return null;
+    const fft   = this.fftAnalyser.getValue();   // Float64Array of dB values
+    const len   = fft.length;
+    const third = Math.floor(len / 3);
+
+    let bass = 0, mid = 0, high = 0;
+
+    for (let i = 0; i < third; i++) {
+      bass += Math.max(0, (fft[i] + 100) / 100);
+    }
+    for (let i = third; i < third * 2; i++) {
+      mid += Math.max(0, (fft[i] + 100) / 100);
+    }
+    for (let i = third * 2; i < len; i++) {
+      high += Math.max(0, (fft[i] + 100) / 100);
+    }
+
+    bass /= third;
+    mid  /= third;
+    high /= (len - third * 2);
+
+    return {
+      level: Math.min((bass * 2 + mid + high * 0.5) / 3.5, 1),
+      bass:  Math.min(bass, 1),
+      mid:   Math.min(mid, 1),
+      high:  Math.min(high, 1)
+    };
   }
 
   /* ── Internal helpers ────────────────────────────────────────── */

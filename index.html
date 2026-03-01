@@ -10,6 +10,9 @@
 <body>
   <div id="map"></div>
 
+  <!-- Three.js particle overlay (inserted here by ParticleSystem) -->
+  <div id="particleContainer"></div>
+
   <!-- Scan line overlay – reads geography like a music box -->
   <canvas id="scanOverlay"></canvas>
 
@@ -86,10 +89,15 @@
     </div>
   </div>
 
+  <!-- Libraries -->
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- App modules -->
   <script src="js/colorAnalyzer.js"></script>
   <script src="js/audioEngine.js"></script>
+  <script src="js/particleSystem.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
